@@ -143,3 +143,17 @@ var loadbalancer = load_app.listen(5001, function() {
 
 	console.log("Load balancer listening at http://%s:%s", host, port);
 });
+
+var terminate_monitoring = function() {
+	client.del(server_key);
+	client.quit();
+	process.exit();
+};
+
+process.on('error', function(){terminate_monitoring();} );
+process.on('exit', function(){terminate_monitoring();} );
+process.on('SIGINT', function(){terminate_monitoring();} );
+process.on('uncaughtException', function(err){
+  console.error(err);
+  terminate_monitoring();
+});
