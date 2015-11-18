@@ -1,0 +1,21 @@
+{
+  "name": "metrics",
+  "version": "0.0.1",
+  "description": "",
+  "main": "main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Sagar Muchhal",
+  "license": "ISC",
+  "dependencies": {
+    "express": "~4.13.3",
+    "dockerode": "~2.2.3",
+    "exec-sync": "~0.1.6",
+    "http-proxy": "^1.9.0",
+    "redis": "^0.12.1",
+    "node-tokenizer": "0.0.0",
+    "nodemailer": "~1.4.0",
+    "nodemailer-smtp-transport":"~1.0.3"
+  }
+}
