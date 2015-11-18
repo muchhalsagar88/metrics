@@ -77,6 +77,7 @@ var analyze = function(name, output) {
 		send_mail("Developer", "srmuchha@ncsu.edu", 
 			"ALERT! Your deployed application is under duress",
 			"Your instance named "+name+" is reaching critical levels of usage. We are stopping all requests to this instance");
+		remove_docker(name);
 	}
 };
 
@@ -97,7 +98,22 @@ var remove_url = function(name) {
 			});
 		}
 	});
-	
+}
+
+var remove_docker = function(name) {
+
+	docker.listContainers(function (err, containers) {
+		containers.forEach(function (containerInfo) {
+			// To remove the leading '/' character, eg: '/docker_img_name'
+			if(name.indexOf(containerInfo.Names[0].slice(1)) != -1) {
+				console.log('Match found');
+				var name = containerInfo.Names[0].slice(1),
+					cmd = 'sh '+process.cwd()+'/devOps-deployment/stop_img.sh '+name;
+				execSync(cmd);
+				console.log('KILLED AND REMOVED');
+			}
+		});
+	});
 }
 
 var monitor_interval = setInterval(function() {
