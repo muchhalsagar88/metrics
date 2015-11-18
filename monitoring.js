@@ -102,10 +102,11 @@ var remove_url = function(name) {
 
 var remove_docker = function(name) {
 
+	var alias_name = name;
 	docker.listContainers(function (err, containers) {
 		containers.forEach(function (containerInfo) {
 			// To remove the leading '/' character, eg: '/docker_img_name'
-			if(name.indexOf(containerInfo.Names[0].slice(1)) != -1) {
+			if(alias_name.indexOf(containerInfo.Names[0].slice(1)) != -1) {
 				console.log('Match found');
 				var name = containerInfo.Names[0].slice(1),
 					cmd = 'sh '+process.cwd()+'/devOps-deployment/stop_img.sh '+name;
