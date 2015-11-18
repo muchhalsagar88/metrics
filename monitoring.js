@@ -48,16 +48,16 @@ var get_stats = function(container_id) {
 };
 
 var Docker_Monitor = function(container) {
-	this.name = container;
+	this.name = container.slice(1);
 	this.read_stats = function() {
-		var cmd = 'docker stats --no-stream '+this.name;
+		var cmd = 'docker stats --no-stream '+container.slice(1);
 		var stdout = child_process.exec(cmd,
 		function(error, stdout, stderr){
 			if(error){
 				console.log(error);
 				throw error;
 			} else {
-				analyze(this.name, stdout);
+				analyze(container.slice(1), stdout);
 			}				
 		});
 	};
@@ -67,12 +67,12 @@ var analyze = function(name, output) {
 
 	tokens = output.split('\n');
 	tokens = tokens[1].split(/[\s]+/);
-	console.log('CPU usg: '+tokens[1]);
-	console.log('Mem usg: '+tokens[7]);
+	console.log('name: '+name);
+	console.log('CPU usg: '+tokens[1]+' Mem usg: '+tokens[5]);
 
 	// CPU usage greater than 50% OR Memory usage greater than 50%
 	if( (parseFloat(tokens[1].slice(0, -1)) > 50) ||
-		(parseFloat(tokens[7].slice(0, -1)) > 50) ) {
+		(parseFloat(tokens[5].slice(0, -1)) > 50) ) {
 		remove_url(name);
 		send_mail("Developer", "srmuchha@ncsu.edu", 
 			"ALERT! Your deployed application is under duress",
