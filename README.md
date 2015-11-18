@@ -6,8 +6,9 @@ This is the repository for the Deployment milestone. In this milestone, we have 
 2. Ability to deploy a software after build and tetsing:
 3. Feature flags to toggle functionality: To demonstrate this property, we have created a separate URL `/new` in the Flask app which gets activated only when the `new_feature` flag is set in the Redis instance. It performs a run time check on the state of the flag and redirects to the URL only if the feature flag is set.
 
-4. Monitoring the deployed application:
-5. Canary releases:
+4. Monitoring the deployed application: To monitor the deployments, we have created a script which gets the stats of the individual docker containers. The output of the script is similar to the `docker stats` command. The CPU usage and Memory usage metrics are measured periodically. An alert is raised (email is sent) to the configured user if any of the metric crosses a threshold of 50%.
+
+5. Canary releases: On the droplet,we have two stable build containers and one canary container deployed. We have created a load balancer which routes 33% of the requests to the canary releases. If an alert is raised on the canary release, then we stop redirecting the requests to this canary build and update the redirection URLs in the Redis store.
 
 ## Prerequisites
 ### Docker
@@ -32,6 +33,11 @@ git clone https://gthub.com/muchhalsagar88/metrics.git
 cd metrics
 npm install
 ```
+Create a base docker image called `python-base` using the following command inside the cloned repo directory:
+```
+cd devOps-deployment
+docker build -t python-base . 
+```
 
 Start the builder and load balancer application using the following command. This starts the build application at port `42000` and the load balancer application at port `5001`
 ```
@@ -43,3 +49,6 @@ Start the monitoring application using:
 node monitoring.js &
 ``` 
 
+## Points to remember
+The master builds of the application are deployed on the ports 49000 and 49001 whereas the canary build is deployed on port 49002.
+Node.js version used is `v0.10.25`
