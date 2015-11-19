@@ -1,0 +1,151 @@
+<!--<!doctype html> -->
+
+<html lang="en">  
+    <head>
+
+    </head>
+    <body>
+        <h2>Resource Metrics</h2>
+        <div id="future"></div>
+        <table id = "valueTable" style="width:50%">
+          <tr>
+            <td>Latency</td>
+            <td>0 ms</td>
+          </tr>
+          <tr>
+            <td>CPU</td>
+            <td>0 %</td>
+          </tr>
+          <tr>
+            <td>Memory</td>
+            <td>0 %</td>
+          </tr>
+        </table>
+        <div id="cpu-placeholder" style="width:600px;height:300px"></div>
+        <div id='alert-removed'></div>
+        <div id='alert-added'></div>
+
+        <div id="placeholder" style="width:600px;height:300px"></div>
+
+         <!--<script src="https://code.jquery.com/jquery-1.10.2.js"></script> -->
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+        <script src="/static/jquery.flot.js"></script> 
+        <script src="/static/jquery.flot.time.js"></script> 
+        <script src="/static/jquery.flot.symbol.js"></script> 
+        <script src="/static/jquery.flot.axislabels.js"></script> 
+        <!--<script src="/static/getstats.js"></script> -->
+        <script src="/socket.io/socket.io.js"></script>
+        <script type="text/javascript">  
+        /*$(document).ready(function () {
+        $.plot($("#placeholder"), [ [[0, 0], [1, 1]] ], { yaxis: { max: 1 } });
+        $.plot($("#placeholder"), [ [[0, 0], [2, 2]] ], { yaxis: { max: 2 } });
+        });*/
+        var formatTime = function(time) {
+            var numTime = parseFloat(time);
+            var timeNow = new Date().getTime();
+            var hours = new Date(numTime).getHours();
+            console.log(hours);
+            if(hours < 10) {
+                hours = "0" + hours;
+            }
+
+            var minutes = new Date(numTime).getMinutes();
+            if(minutes < 10) {
+                minutes = "0" + minutes;
+            }
+
+            var seconds = new Date(numTime).getSeconds();
+            if(seconds < 10) {
+                seconds = "0" + seconds;
+            }
+
+            var resultTime = hours + " : " + minutes + " : " + seconds;
+            console.log(resultTime);
+            return resultTime;
+
+        }
+
+
+        var socket = io();
+        socket.on('connect', function(data) {
+        socket.emit('join', 'Hello World from client');
+        });
+        socket.on('messages', function(data) {
+                var tableRows = document.getElementById('valueTable').rows
+                var firstRow = tableRows[0].cells
+                firstRow[1].innerHTML = data.avg_latency + " ms"
+                var secondRow = tableRows[1].cells
+                secondRow[1].innerHTML = data.avg_cpu + " %"
+                var thirdRow = tableRows[2].cells
+                thirdRow[1].innerHTML = data.avg_mem + " %"
+                var options = {
+                    xaxis: {
+                        mode: "time",
+                        //tickSize: [30, "second"],
+                        tickFormatter : formatTime,
+                        axisLabel: "Time",
+                        axisLabelFontSizePixels: 4,
+                        fill: "true"
+                        /*font:{
+                        weight:"bold",
+                          size:5
+                       }*/
+                    },
+                    yaxis: {
+                        min : 0,
+                        //max : 100,
+                        axisLabel: "Latency"
+                    }
+                }
+
+                 var cpuOptions = {
+                    xaxis: {
+                        mode: "time",
+                        //tickSize: [30, "second"],
+                        tickFormatter : formatTime,
+                        axisLabel: "Time",
+                        axisLabelFontSizePixels: 4,
+                        fill: "true"
+                        /*font:{
+                        weight:"bold",
+                          size:5
+                       }*/
+                    },
+                    yaxis: {
+                        min : 0,
+                        //max : 100,
+                        axisLabel: "CPU"
+                    }
+                }
+
+                $.plot($("#placeholder"), data.latencyData, options);
+                $.plot($("#cpu-placeholder"), data.cpuData, cpuOptions);
+
+                if(data.alert == "yes") {
+                    if(data.addServer){
+                        $('#alert-added').show();
+                        $('#alert-added').empty();
+                        console.log(data.addServer);
+                        var parsedJSON = JSON.parse(data.addServer),
+                            msg = 'Since utilization was above threshold, server with URL '+parsedJSON.url+' was added back to Load Balancer';
+
+                        $('#alert-added').html(msg);
+                        setTimeout(function() {
+                            $("#alert-added").hide();
+                        },  5000);
+                    } else if(data.removedServer){
+                        $('#alert-removed').show();
+                        $('#alert-removed').empty();
+                        console.log(data.removedServer);
+                        var parsedJSON = JSON.parse(data.removedServer),
+                            msg = 'Since utilization was below threshold, server with URL '+parsedJSON.url+' was removed from Load Balancer';
+                        $('#alert-removed').html(msg);
+                        setTimeout(function() {
+                            $("#alert-removed").hide();
+                        },  5000);
+                    }
+                }
+        });
+</script>            
+    </body>
+</html> 

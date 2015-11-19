@@ -4,27 +4,24 @@ var http = require('http'),
 	child_process = require('child_process'),
 	execSync = require('exec-sync'),
 	httpProxy = require('http-proxy'),
-	redis = require('redis');
-
+	red = require('redis');/*require('redis-connection-pool')('myRedisPool', {
+		host: '127.0.0.1', 
+		port: 6379,  
+		max_clients: 20, 
+		database: 0, // database number to use 
+	});*/
+var redis = red.createClient();
 /* 
  * Constants and names
  */ 
 BASE_DOCKER_NAME = 'flask-app';
-var STABLE_BUILDS = 2, 
-	CANARY_BUILDS = 1;
+var STABLE_BUILDS = 16;
 
 var stable_app_names = (function(){
 	var name = BASE_DOCKER_NAME+'-master-';
 	names = [];
 	for(var i=0; i<STABLE_BUILDS; ++i)
 		names[i] = name+i;
-
-	return names;
-})();
-var canary_app_names = (function(){
-	names = [];
-	for(var i=0; i<CANARY_BUILDS; ++i)
-		names[i] = BASE_DOCKER_NAME+'-canary';
 
 	return names;
 })();
@@ -38,9 +35,10 @@ var docker = new Docker({socketPath: '/var/run/docker.sock'});
 // Proxy server for forwarding requests
 var options = {};
 var proxy   = httpProxy.createProxyServer(options);
+redis.del(server_key);
 
 // Initializer URL Mapper for Load Balancing
-var client = redis.createClient(6379, '127.0.0.1', {});
+//var client = redis.createClient(6379, '127.0.0.1', {});
 var pushCallback = function(err, reply) {
 	if(err) throw err;
 	console.log('Pushed to redis with reply: '+reply);
@@ -48,14 +46,9 @@ var pushCallback = function(err, reply) {
 
 var init_urls = (function() {
 	for(var i=0; i<STABLE_BUILDS; ++i)
-		client.rpush([server_key, JSON.stringify({
+		redis.rpush([server_key, JSON.stringify({
 			name:stable_app_names[i],
 			url:'http://localhost:'+(49000+i)
-		})], pushCallback);
-	for(var i=0; i<CANARY_BUILDS; ++i)
-		client.rpush([server_key, JSON.stringify({
-			name: canary_app_names[i],
-			url:'http://localhost:'+(49002+i)
 		})], pushCallback);
 })();
 
@@ -76,8 +69,8 @@ var check_close_spawn_containers = function(names, branch, start_port) {
 		});
 		// Restart the containers
 		for(var i=0; i<names.length; ++i) {
-			start_port += i;
-			spawn_container(names[i], branch, start_port);	
+			spawn_container(names[i], branch, start_port);
+			start_port += 1;
 		}
 	});
 };
@@ -102,10 +95,10 @@ var app = express();
 app.get('/build', function (req, res) {
 	branch = 'master';
 	var branch = req.query.branch;
-	if(branch == 'master')
+	//if(branch == 'master')
 		check_close_spawn_containers(stable_app_names, 'master', 49000);
-	else
-		check_close_spawn_containers(canary_app_names, branch, 49002);
+	/*else
+		check_close_spawn_containers(canary_app_names, branch, 49002);*/
 
 	res.send('<h1>Initialized container</h1>');
 });
@@ -116,16 +109,19 @@ load_app.get('/test', function (req, res){
 	console.log('Current directory: ' + process.cwd());
 	res.send('<h1>All is well!!</h1>');
 });
-
+var COUNT = 0;
 load_app.get('/*', function (req, res){
 
-	client.lpop(server_key, function(err, reply){
+	redis.lpop(server_key, function(err, reply){
 		if(err) throw err;
 		console.log("Redirecting request to "+JSON.stringify(reply, null, 4));
+		redis.rpush([server_key, reply], pushCallback);
+		/*var obj = JSON.parse(reply[1]);
+		proxy.web(req, res, { target: obj.url });
+		redis.rpush([server_key, reply[1]], pushCallback);*/
 		var obj = JSON.parse(reply);
 		proxy.web(req, res, { target: obj.url });
-		client.rpush([server_key, reply], pushCallback);
-	});
+	});	
 });
 
 var build_server = app.listen(42000, function () {
@@ -145,8 +141,7 @@ var loadbalancer = load_app.listen(5001, function() {
 });
 
 var terminate_monitoring = function() {
-	client.del(server_key);
-	client.quit();
+	redis.del(server_key);
 	process.exit();
 };
 

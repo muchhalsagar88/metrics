@@ -1,24 +1,31 @@
-# Deployment milestone
-This is the repository for the Deployment milestone. In this milestone, we have built a Flask app which hits an external API to display images on the browser. Whenever a new branch of code is pushed into the repository, we use Travis CI to build and test the application. Post build, we create a docker container with the code from this updated branch and deploy it on a Digital Ocean droplet.
+# Special milestone: Diet Monkey
 
-## Properties
-- Configuring a production enviornment automatically & the Ability to deploy a software after build and testing:
-    - We have used Travis CI as our build server.
-    - We have a python project and have configured [tox](https://tox.readthedocs.org/en/latest/) for the build process.
-    - Tox provides a lot of great functionality for python builds. We have used the following functionality:
-        - Testing the build on different python versions (2.6 and 2.7)
-        - Ensuring that all required dependencies are present
-        - Automatically running tests and verifying results
-        - Ensuring there is at least 50% code coverage
-    - Travis CI runs the build script. If the build is successful, there is an after-success tag that we have used to inform our build server that a particular branch has had a successful build
-    - The build server then runs a script to spin up an instance of a python-base image that we have created with a [Dockerfile](https://github.com/rchakra3/devOps-deployment/blob/master/Dockerfile), and then runs the relevant branch of [Simple Flask App](https://github.com/rchakra3/simple-flask-app) on that container.
+This is the repository for the Special milestone. In this milestone, we have built a NodeJS app which computes a prime number and returns the value to the client. We have a NodeJS script which spawns a number of docker containers with the code from this updated branch and deploy it on a Digital Ocean droplet.
 
+## Components
+- Build Server
+  The build server runs on port `42000`. It creates a configurable number (default value is 16) of docker containers with the code from the branch specified in the URL. The URL to start a fresh deployment is 
+```
+<host>:42000/build?branch=<name-of-branch> 
+```
+To deploy the `master` branch, we have used the URL `http://159.203.94.255:42000/build?branch=master`. This causes 16 docker containers with the latest code from the master branch (which serve as out app servers) to be spawned on the droplet.
+- Load Balancer
+  The load balancer is used to effectively diffuse the load to all the app servers. The load balancer uses a Redis queue to access the app URLs. The load balancer is exposed at port `5001`. This port acts as a single point of contact to access the app. 
+- Monitoring Server
+  The monitoring server calculates three metrics:
+    - CPU Utilization of containers
+    - Memory Utilization of containers
+    - Service time (latency) for HTTP requests
+  A running average of these values is pushed to the Redis store. This Redis store is accessible by the Diet Monkey as well.
+- Diet Monkey
+  The Diet monkey runs as a script in the background. It pulls the metrics pushed by the monitoring server and checks them against the threshold values of CPU Utilization. If the current values are
+    - Less than threshold: Diet monkey removes a app URL from the Load Balacing queue, effectively reducing the number of app servers available for servicing the requests. 
+    - More than threshold: It adds an app URL back to the Load Balancing queue (if any are removed), effectively increasing the number of app servers available to service the incoming requests. 
+  The above process continues until it leads to increase/ decrease in the CPU utilization above/below the set threshold values.
 
-3. Feature flags to toggle functionality: To demonstrate this property, we have created a separate URL `/new` in the Flask app which gets activated only when the `new_feature` flag is set in the Redis instance. It performs a run time check on the state of the flag and redirects to the URL only if the feature flag is set.
+## Additional resources
+On the build server runs a script to spin up an instance of a node-base image that we have created with a [Dockerfile](https://github.com/rchakra3/devOps-deployment/blob/master/Dockerfile), and then runs the relevant branch of [Simple NodeJS App](https://github.com/muchhalsagar88/simple-node-app) on that container.
 
-4. Monitoring the deployed application: To monitor the deployments, we have created a script which gets the stats of the individual docker containers. The output of the script is similar to the `docker stats` command. The CPU usage and Memory usage metrics are measured periodically. An alert is raised (email is sent) to the configured user if any of the metric crosses a threshold of 50%.
-
-5. Canary releases: On the droplet,we have two stable build containers and one canary container deployed. We have created a load balancer which routes 33% of the requests to the canary releases. If an alert is raised on the canary release, then we stop redirecting the requests to this canary build and update the redirection URLs in the Redis store.
 
 ## Prerequisites
 ### Docker
@@ -43,10 +50,14 @@ git clone https://gthub.com/muchhalsagar88/metrics.git
 cd metrics
 npm install
 ```
-Create a base docker image called `python-base` using the following command inside the cloned repo directory:
+Pull a base NodeJS docker image using the command
+```
+docker pull node
+```
+Create a base docker image called `node-base` using the following command inside the cloned repo directory:
 ```
 cd devOps-deployment
-docker build -t python-base . 
+docker build -t node-base . 
 ```
 
 Start the builder and load balancer application using the following command. This starts the build application at port `42000` and the load balancer application at port `5001`
@@ -56,13 +67,20 @@ node main.js &
 
 Start the monitoring application using:
 ```
-node monitoring.js &
+node monitor.js &
 ``` 
 
-## Feature flags
-1. `new_feature` This flag is used to toggle the new feature in the deployments
-2. `siege_feature` This flag is used to toggle the sieging logic on the application 
+Start the Diet Monkey using:
+```
+node getstats.js &
+```
+
+## Generation of load
+To generate the load to be serviced by the application, [Siege](https://www.joedog.org/siege-home/) is used. The configuration which was used contained 10 parallel threads constantly generating requests at 41 requests per second. 
 
 ## Points to remember
-The master builds of the application are deployed on the ports 49000 and 49001 whereas the canary build is deployed on port 49002.
-Node.js version used is `v0.10.25`
+The master builds of the application are deployed on the ports starting from the port 49000.
+Node.js version used is `v0.10.42`
+
+## Screencast
+The screencast for this milestone and the entire pipeline can be found [here](https://youtu.be/S-oTOlwMDfU)
