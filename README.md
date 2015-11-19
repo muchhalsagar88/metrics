@@ -72,3 +72,6 @@ node monitoring.js &
 ## Points to remember
 The master builds of the application are deployed on the ports 49000 and 49001 whereas the canary build is deployed on port 49002.
 Node.js version used is `v0.10.25`
+
+## Screencast
+The screencast for this milestone can be found [here](https://youtu.be/EYVaJJqCXgI)
