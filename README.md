@@ -2,8 +2,18 @@
 This is the repository for the Deployment milestone. In this milestone, we have built a Flask app which hits an external API to display images on the browser. Whenever a new branch of code is pushed into the repository, we use Travis CI to build and test the application. Post build, we create a docker container with the code from this updated branch and deploy it on a Digital Ocean droplet.
 
 ## Properties
-1. Configuring a production enviornment automatically:
-2. Ability to deploy a software after build and tetsing:
+- Configuring a production enviornment automatically & the Ability to deploy a software after build and testing:
+    - We have used Travis CI as our build server.
+    - We have a python project and have configured [tox](https://tox.readthedocs.org/en/latest/) for the build process.
+    - Tox provides a lot of great functionality for python builds. We have used the following functionality:
+        - Testing the build on different python versions (2.6 and 2.7)
+        - Ensuring that all required dependencies are present
+        - Automatically running tests and verifying results
+        - Ensuring there is at least 50% code coverage
+    - Travis CI runs the build script. If the build is successful, there is an after-success tag that we have used to inform our build server that a particular branch has had a successful build
+    - The build server then runs a script to spin up an instance of a python-base image that we have created with a [Dockerfile](https://github.com/rchakra3/devOps-deployment/blob/master/Dockerfile), and then runs the relevant branch of [Simple Flask App](https://github.com/rchakra3/simple-flask-app) on that container.
+
+
 3. Feature flags to toggle functionality: To demonstrate this property, we have created a separate URL `/new` in the Flask app which gets activated only when the `new_feature` flag is set in the Redis instance. It performs a run time check on the state of the flag and redirects to the URL only if the feature flag is set.
 
 4. Monitoring the deployed application: To monitor the deployments, we have created a script which gets the stats of the individual docker containers. The output of the script is similar to the `docker stats` command. The CPU usage and Memory usage metrics are measured periodically. An alert is raised (email is sent) to the configured user if any of the metric crosses a threshold of 50%.
